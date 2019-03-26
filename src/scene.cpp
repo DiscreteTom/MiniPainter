@@ -55,6 +55,40 @@ void Scene::done()
 	}
 }
 
+void Scene::drawLine(int x, int y)
+{
+	// clear temp
+	for (int y = min(startY, endY); y <= max(startY, endY); ++y){
+		for (int x = min(startX, endX); x <= max(startX, endX); ++x){
+			temp[y][x] = QColor(); // invalid
+		}
+	}
+	myUpdate(min(startX, endX), transformY(max(startY, endY)), abs(startX - endX) + 1, abs(startY - endY) + 1);
+
+	// ================= Bresenham's Algorithm
+	endX = x;
+	endY = y;
+	// assume standard situation, 0 <= gradient <= 1
+	int e = -(endX - startX);
+	int currentY = startY;
+	for (int i = startX; i <= endX; ++i){
+		if (e >= 0){
+			e -= 2 * (endX - startX);
+			++currentY;
+		}
+		e += 2 * (endY - startY);
+		temp[currentY][i] = window->getFgColor();
+	}
+
+	myUpdate(min(startX, endX), transformY(max(startY, endY)), abs(startX - endX), abs(startY - endY));
+}
+
+void Scene::myUpdate(int x, int y, int width, int height)
+{
+	refresh = true;
+	update(x, y, width, height);
+}
+
 void Scene::paintEvent(QPaintEvent *e)
 {
 	if (!refresh) // not need to refresh, use cache
@@ -88,19 +122,46 @@ void Scene::paintEvent(QPaintEvent *e)
 	}
 }
 
-void Scene::mousePressEvent(QMouseEvent *)
+void Scene::mousePressEvent(QMouseEvent *e)
 {
+	switch (window->getTool()){
+	case MainWindow::PEN:
+		break;
+	case MainWindow::LINE:
+		startX = endX = e->x();
+		startY = endY = transformY((e->y()));
+		break;
+	default:
+		break;
+	}
+
 	setMouseTracking(true);
 }
 
 void Scene::mouseMoveEvent(QMouseEvent *e)
 {
-	permanent[transformY(e->y())][e->x()] = window->getFgColor();
-	refresh = true;
-	update(e->x(), e->y(), 1, 1);
+	switch(window->getTool()){
+	case MainWindow::PEN:
+		permanent[transformY(e->y())][e->x()] = window->getFgColor();
+		myUpdate(e->x(), e->y(), 1, 1);
+		break;
+	case MainWindow::LINE:
+		drawLine(e->x(), transformY(e->y()));
+		break;
+	default:
+		break;
+	}
 }
 
 void Scene::mouseReleaseEvent(QMouseEvent *)
 {
+	switch(window->getTool()){
+	case MainWindow::LINE:
+		done();
+		break;
+	default:
+		break;
+	}
+
 	setMouseTracking(false);
 }
