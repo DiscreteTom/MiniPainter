@@ -33,10 +33,10 @@ private:
 	int endY;
 
 	int transformY(int y) const { return HEIGHT - y - 1; } // left bottom (0, 0) <-> left top (0, 0)
-	void drawLine(int x, int y); // with startX and startY, using Bresenham's Algorithm
-	int max(int a, int b) const {return a > b ? a : b;}
-	int min(int a, int b) const {return a < b ? a : b;}
-	int abs(int a) const {return a > 0? a : -a;}
+	void drawLine(int x, int y);													 // with startX and startY, using Bresenham's Algorithm
+	int max(int a, int b) const { return a > b ? a : b; }
+	int min(int a, int b) const { return a < b ? a : b; }
+	int abs(int a) const { return a > 0 ? a : -a; }
 
 	void myUpdate(int x, int y, int width, int height);
 

@@ -58,8 +58,10 @@ void Scene::done()
 void Scene::drawLine(int x, int y)
 {
 	// clear temp
-	for (int y = min(startY, endY); y <= max(startY, endY); ++y){
-		for (int x = min(startX, endX); x <= max(startX, endX); ++x){
+	for (int y = min(startY, endY); y <= max(startY, endY); ++y)
+	{
+		for (int x = min(startX, endX); x <= max(startX, endX); ++x)
+		{
 			temp[y][x] = QColor(); // invalid
 		}
 	}
@@ -71,8 +73,10 @@ void Scene::drawLine(int x, int y)
 	// assume standard situation, 0 <= gradient <= 1
 	int e = -(endX - startX);
 	int currentY = startY;
-	for (int i = startX; i <= endX; ++i){
-		if (e >= 0){
+	for (int i = startX; i <= endX; ++i)
+	{
+		if (e >= 0)
+		{
 			e -= 2 * (endX - startX);
 			++currentY;
 		}
@@ -124,8 +128,11 @@ void Scene::paintEvent(QPaintEvent *e)
 
 void Scene::mousePressEvent(QMouseEvent *e)
 {
-	switch (window->getTool()){
+	switch (window->getTool())
+	{
 	case MainWindow::PEN:
+		startX = endX = e->x();
+		startY = endY = transformY(e->y());
 		break;
 	case MainWindow::LINE:
 		startX = endX = e->x();
@@ -140,10 +147,13 @@ void Scene::mousePressEvent(QMouseEvent *e)
 
 void Scene::mouseMoveEvent(QMouseEvent *e)
 {
-	switch(window->getTool()){
+	switch (window->getTool())
+	{
 	case MainWindow::PEN:
-		permanent[transformY(e->y())][e->x()] = window->getFgColor();
-		myUpdate(e->x(), e->y(), 1, 1);
+		done();
+		startX = endX;
+		startY = endY;
+		drawLine(e->x(), transformY(e->y()));
 		break;
 	case MainWindow::LINE:
 		drawLine(e->x(), transformY(e->y()));
@@ -155,7 +165,11 @@ void Scene::mouseMoveEvent(QMouseEvent *e)
 
 void Scene::mouseReleaseEvent(QMouseEvent *)
 {
-	switch(window->getTool()){
+	switch (window->getTool())
+	{
+	case MainWindow::PEN:
+		done();
+		break;
 	case MainWindow::LINE:
 		done();
 		break;
