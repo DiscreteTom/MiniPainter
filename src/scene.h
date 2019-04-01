@@ -41,13 +41,14 @@ private:
 
 	void drawLine(int x, int y);												// with startX and startY, using Bresenham's Algorithm
 	void BresenhamLine(int x1, int y1, int x2, int y2); // x1 & y1: left bottom point, x2 & y2: right top point
+	void drawRect(int x, int y);
 
 	int transformY(int y) const { return HEIGHT - y - 1; } // left bottom (0, 0) <-> left top (0, 0)
 	int max(int a, int b) const { return a > b ? a : b; }
 	int min(int a, int b) const { return a < b ? a : b; }
 	int abs(int a) const { return a > 0 ? a : -a; }
 
-	void clearTemp(); // set temp[] to empty and erase them on canvas
+	void clearTemp(); // set temp[] to empty and erase them on canvas according to startX/Y & endX/Y
 	void drawTemp();
 	void swapTemp(); // temp[].x <-> temp[].y
 	void flipY(bool usingStartY = true); // temp[].y = 2 * startY - temp[].y

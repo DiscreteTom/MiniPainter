@@ -172,6 +172,40 @@ void Scene::BresenhamLine(int x1, int y1, int x2, int y2)
 	}
 }
 
+void Scene::drawRect(int x, int y)
+{
+	clearTemp();
+
+	endX = x;
+	endY = y;
+	int index = 0; // index of temp
+
+	for (int i = min(x, startX); i <= max(x, startX); ++i)
+	{
+		temp[index].x = i;
+		temp[index].y = startY;
+		temp[index].color = window->getFgColor();
+		++index;
+		temp[index].x = i;
+		temp[index].y = y;
+		temp[index].color = window->getFgColor();
+		++index;
+	}
+	for (int i = min(y, startY); i <= max(y, startY); ++i)
+	{
+		temp[index].x = startX;
+		temp[index].y = i;
+		temp[index].color = window->getFgColor();
+		++index;
+		temp[index].x = x;
+		temp[index].y = i;
+		temp[index].color = window->getFgColor();
+		++index;
+	}
+
+	drawTemp();
+}
+
 void Scene::clearTemp()
 {
 	clearingTemp = true;
@@ -278,7 +312,11 @@ void Scene::mousePressEvent(QMouseEvent *e)
 		break;
 	case MainWindow::LINE:
 		startX = endX = e->x();
-		startY = endY = transformY((e->y()));
+		startY = endY = transformY(e->y());
+		break;
+	case MainWindow::RECT:
+		startX = endX = e->x();
+		startY = endY = transformY(e->y());
 		break;
 	default:
 		break;
@@ -300,6 +338,9 @@ void Scene::mouseMoveEvent(QMouseEvent *e)
 	case MainWindow::LINE:
 		drawLine(e->x(), transformY(e->y()));
 		break;
+	case MainWindow::RECT:
+		drawRect(e->x(), transformY(e->y()));
+		break;
 	default:
 		break;
 	}
@@ -313,6 +354,9 @@ void Scene::mouseReleaseEvent(QMouseEvent *)
 		done();
 		break;
 	case MainWindow::LINE:
+		done();
+		break;
+	case MainWindow::RECT:
 		done();
 		break;
 	default:
