@@ -13,32 +13,45 @@ public:
 	Scene(MainWindow *parent = 0);
 	virtual ~Scene();
 
-	void done();
-
 private:
 	const int WIDTH = 800;
 	const int HEIGHT = 600;
 
+	struct Temp // temp pixels
+	{
+		QColor color;
+		int x;
+		int y;
+	};
+
 	MainWindow *window;
 
 	QColor **permanent; // left bottom is (0, 0), all white by default
-	QColor **temp;			// left bottom is (0, 0), all invalid by default
-	QPixmap *cache;			// left bottom is (0, 0), to optimize drawing speed
+	Temp *temp;					// record all temp points. left bottom point is (0, 0). End with invalid color.
+	QPixmap *cache;			// left top is (0, 0), to optimize drawing speed
 
-	bool refresh = true; // if true, refresh cache
+	bool permanentChanged = true; // draw permanent pixels at begining
+	bool clearingTemp = false;
+	bool drawingTemp = false;
 
 	int startX; // x of start point, left bottom is (0, 0)
 	int startY; // y of start point, left bottom is (0, 0)
 	int endX;
 	int endY;
 
+	void drawLine(int x, int y);												// with startX and startY, using Bresenham's Algorithm
+	void BresenhamLine(int x1, int y1, int x2, int y2); // x1 & y1: left bottom point, x2 & y2: right top point
+
 	int transformY(int y) const { return HEIGHT - y - 1; } // left bottom (0, 0) <-> left top (0, 0)
-	void drawLine(int x, int y);													 // with startX and startY, using Bresenham's Algorithm
 	int max(int a, int b) const { return a > b ? a : b; }
 	int min(int a, int b) const { return a < b ? a : b; }
 	int abs(int a) const { return a > 0 ? a : -a; }
 
-	void myUpdate(int x, int y, int width, int height);
+	void clearTemp(); // set temp[] to empty and erase them on canvas
+	void drawTemp();
+	void swapTemp(); // temp[].x <-> temp[].y
+	void flipY(bool usingStartY = true); // temp[].y = 2 * startY - temp[].y
+	void done(); // merge temp to permanent
 
 protected:
 	virtual void paintEvent(QPaintEvent *e);

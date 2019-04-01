@@ -18,21 +18,23 @@ Scene::Scene(MainWindow *parent) : QWidget(parent)
 			permanent[i][j] = QColor(255, 255, 255); // white
 		}
 	}
-	temp = new QColor *[HEIGHT];
-	for (int i = 0; i < HEIGHT; ++i)
+	// init temp
+	temp = new Temp[HEIGHT * WIDTH];
+	for (int i = 0; i < HEIGHT * WIDTH; ++i)
 	{
-		temp[i] = new QColor[WIDTH]; // invalid color
+		temp[i].color = QColor(); // invalid color
 	}
 
 	// init cache
 	cache = new QPixmap(WIDTH, HEIGHT);
+
+	setAttribute(Qt::WA_OpaquePaintEvent); // enable paint without erase
 }
 
 Scene::~Scene()
 {
 	for (int i = 0; i < HEIGHT; ++i)
 	{
-		delete[] temp[i];
 		delete[] permanent[i];
 	}
 	delete[] temp;
@@ -42,87 +44,225 @@ Scene::~Scene()
 void Scene::done()
 {
 	// merge temp to permanent
-	for (int i = 0; i < HEIGHT; ++i)
+	for (int i = 0; i < HEIGHT * WIDTH && temp[i].color.isValid(); ++i)
 	{
-		for (int j = 0; j < WIDTH; ++j)
-		{
-			if (temp[i][j].isValid())
-			{
-				permanent[i][j] = temp[i][j];
-				temp[i][j] = QColor(); // set invalid
-			}
-		}
+		permanent[temp[i].y][temp[i].x] = temp[i].color;
+		temp[i].color = QColor(); // set invalid
 	}
+	// need not to refresh, just merge temp to permanent
 }
 
 void Scene::drawLine(int x, int y)
 {
-	// clear temp
-	for (int y = min(startY, endY); y <= max(startY, endY); ++y)
-	{
-		for (int x = min(startX, endX); x <= max(startX, endX); ++x)
-		{
-			temp[y][x] = QColor(); // invalid
-		}
-	}
-	myUpdate(min(startX, endX), transformY(max(startY, endY)), abs(startX - endX) + 1, abs(startY - endY) + 1);
+	clearTemp();
 
-	// ================= Bresenham's Algorithm
 	endX = x;
 	endY = y;
-	// assume standard situation, 0 <= gradient <= 1
-	int e = -(endX - startX);
-	int currentY = startY;
-	for (int i = startX; i <= endX; ++i)
+
+	if (startX <= endX)
+	{
+		if (startY <= endY)
+		{
+			if (abs(startX - endX) >= abs(startY - endY))
+			{
+				// 0 <= gradient <= 1
+				BresenhamLine(startX, startY, endX, endY);
+			}
+			else
+			{
+				// 1 < gradient < infinite
+				BresenhamLine(startY, startX, endY, endX);
+				swapTemp();
+			}
+		}
+		else
+		{
+			if (abs(startX - endX) >= abs(startY - endY))
+			{
+				// -1 <= gradient < 0
+				BresenhamLine(startX, startY, endX, 2 * startY - endY);
+				flipY();
+			}
+			else
+			{
+				// -infinite < gradient < -1
+				BresenhamLine(startY, startX, 2 * startY - endY, endX);
+				swapTemp();
+				flipY();
+			}
+		}
+	}
+	else
+	{
+		// exchange start and end
+		if (endY <= startY)
+		{
+			if (abs(endX - startX) >= abs(endY - startY))
+			{
+				// 0 <= gradient <= 1
+				BresenhamLine(endX, endY, startX, startY);
+			}
+			else
+			{
+				// 1 < gradient < infinite
+				BresenhamLine(endY, endX, startY, startX);
+				swapTemp();
+			}
+		}
+		else
+		{
+			if (abs(endX - startX) >= abs(endY - startY))
+			{
+				// -1 <= gradient < 0
+				BresenhamLine(endX, endY, startX, 2 * endY - startY);
+				flipY(false);
+			}
+			else
+			{
+				// -infinite < gradient < -1
+				BresenhamLine(endY, endX, 2 * endY - startY, startX);
+				swapTemp();
+				flipY(false);
+			}
+		}
+	}
+
+	drawTemp();
+}
+
+void Scene::BresenhamLine(int x1, int y1, int x2, int y2)
+{
+	// check x1, y1, x2, y2, temp
+	if (temp[0].color.isValid())
+	{
+		qDebug() << "Scene::BresenhamLine: temp is not empty";
+		return;
+	}
+	if (x1 > x2)
+	{
+		qDebug() << "bad x";
+		return;
+	}
+	if (y1 > y2)
+	{
+		qDebug() << "bad y";
+		return;
+	}
+	if (abs(x1 - x2) < abs(y1 - y2))
+	{
+		qDebug() << "bad scale";
+		return;
+	}
+
+	int e = -(x2 - x1);
+	int currentY = y1;
+	for (int i = x1; i <= x2; ++i)
 	{
 		if (e >= 0)
 		{
-			e -= 2 * (endX - startX);
+			e -= 2 * (x2 - x1);
 			++currentY;
 		}
-		e += 2 * (endY - startY);
-		temp[currentY][i] = window->getFgColor();
+		e += 2 * (y2 - y1);
+		temp[i - x1].x = i;
+		temp[i - x1].y = currentY;
+		temp[i - x1].color = window->getFgColor();
 	}
-
-	myUpdate(min(startX, endX), transformY(max(startY, endY)), abs(startX - endX), abs(startY - endY));
 }
 
-void Scene::myUpdate(int x, int y, int width, int height)
+void Scene::clearTemp()
 {
-	refresh = true;
-	update(x, y, width, height);
+	clearingTemp = true;
+
+	repaint(min(startX, endX), transformY(max(startY, endY)), abs(startX - endX) + 1, abs(startY - endY) + 1);
+
+	for (int i = 0; i < HEIGHT * WIDTH && temp[i].color.isValid(); ++i)
+	{
+		temp[i].color = QColor(); // set invalid
+	}
+}
+
+void Scene::drawTemp()
+{
+	drawingTemp = true;
+	repaint(min(startX, endX), transformY(max(startY, endY)), abs(startX - endX) + 1, abs(startY - endY) + 1);
+}
+
+void Scene::swapTemp()
+{
+	for (int i = 0; i < WIDTH * HEIGHT && temp[i].color.isValid(); ++i)
+	{
+		int t = temp[i].x;
+		temp[i].x = temp[i].y;
+		temp[i].y = t;
+	}
+}
+
+void Scene::flipY(bool usingStartY)
+{
+	for (int i = 0; i < WIDTH * HEIGHT && temp[i].color.isValid(); ++i)
+	{
+		if (usingStartY)
+			temp[i].y = 2 * startY - temp[i].y;
+		else
+			temp[i].y = 2 * endY - temp[i].y;
+	}
 }
 
 void Scene::paintEvent(QPaintEvent *e)
 {
-	if (!refresh) // not need to refresh, use cache
+	QPainter cachePainter(cache);
+	QPainter painter(this);
+	if (!permanentChanged && !clearingTemp && !drawingTemp) // not need to refresh, use cache
 	{
-		QPainter painter(this);
 		painter.drawPixmap(0, 0, *cache);
 	}
-	else // refresh cache and paint
+	else // refresh cancas and cache
 	{
-		QPainter cachePainter(cache);
-		QPainter painter(this);
-		for (int x = e->rect().x(); x < e->rect().x() + e->rect().width(); ++x)
+		if (permanentChanged)
 		{
-			for (int y = e->rect().y(); y < e->rect().y() + e->rect().height(); ++y)
+			permanentChanged = false;
+			for (int x = e->rect().left(); x <= e->rect().right(); ++x)
 			{
-				if (temp[transformY(y)][x].isValid())
-				{
-					painter.setPen(temp[transformY(y)][x]);
-					cachePainter.setPen(temp[transformY(y)][x]);
-				}
-				else
+				for (int y = e->rect().top(); y <= e->rect().bottom(); ++y)
 				{
 					painter.setPen(permanent[transformY(y)][x]);
 					cachePainter.setPen(permanent[transformY(y)][x]);
+					painter.drawPoint(x, y);
+					cachePainter.drawPoint(x, y);
 				}
-				painter.drawPoint(x, y);
-				cachePainter.drawPoint(x, y);
 			}
 		}
-		refresh = false;
+		else if (drawingTemp)
+		{
+			drawingTemp = false;
+			for (int i = 0; i < HEIGHT * WIDTH && temp[i].color.isValid(); ++i)
+			{
+				if (e->rect().contains(temp[i].x, transformY(temp[i].y)))
+				{
+					// using temp color
+					painter.setPen(temp[i].color);
+					cachePainter.setPen(temp[i].color);
+					painter.drawPoint(temp[i].x, transformY(temp[i].y));
+					cachePainter.drawPoint(temp[i].x, transformY(temp[i].y));
+				}
+			}
+		}
+		else if (clearingTemp)
+		{
+			clearingTemp = false;
+			for (int i = 0; i < HEIGHT * WIDTH && temp[i].color.isValid(); ++i)
+			{
+				if (e->rect().contains(temp[i].x, transformY(temp[i].y)))
+				{
+					// using permanent color
+					painter.setPen(permanent[temp[i].y][temp[i].x]);
+					cachePainter.setPen(permanent[temp[i].y][temp[i].x]);
+					painter.drawPoint(temp[i].x, transformY(temp[i].y));
+					cachePainter.drawPoint(temp[i].x, transformY(temp[i].y));
+				}
+			}
+		}
 	}
 }
 
