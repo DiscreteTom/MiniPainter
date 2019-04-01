@@ -1,3 +1,4 @@
+#include <QColorDialog>
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "scene.h"
@@ -44,4 +45,28 @@ MainWindow::PolyFillType MainWindow::getPolyFillType() const
 		return COLOR;
 	else
 		return NO;
+}
+
+void MainWindow::on_fgColorBtn_clicked()
+{
+	auto result = QColorDialog::getColor(*fgColor, this, "Choose foreground color");
+	if (result.isValid()){
+		*fgColor = result;
+		setBtnColor(ui->fgColorBtn, result);
+	}
+}
+
+void MainWindow::setBtnColor(QPushButton *btn, QColor color)
+{
+	QString qss = QString("background-color: rgb(%1,%2,%3);").arg(color.red()).arg(color.green()).arg(color.blue());
+	btn->setStyleSheet(qss);
+}
+
+void MainWindow::on_bgColorBtn_clicked()
+{
+	auto result = QColorDialog::getColor(*fgColor, this, "Choose background color");
+	if (result.isValid()){
+		*bgColor = result;
+		setBtnColor(ui->bgColorBtn, result);
+	}
 }

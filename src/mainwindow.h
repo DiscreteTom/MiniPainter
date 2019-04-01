@@ -42,11 +42,17 @@ public:
 	QColor getFgColor() const { return *fgColor; }
 	QColor getBgColor() const { return *bgColor; }
 
+private slots:
+	void on_fgColorBtn_clicked();
+	void on_bgColorBtn_clicked();
+
 private:
 	Ui::MainWindow *ui;
 
 	QColor *fgColor; // foreground color
 	QColor *bgColor; // background color
+
+	void setBtnColor(QPushButton * btn, QColor color);
 };
 
 #endif // MAINWINDOW_H
