@@ -46,7 +46,9 @@ void Scene::done()
 	// merge temp to permanent
 	for (int i = 0; i < HEIGHT * WIDTH && temp[i].color.isValid(); ++i)
 	{
-		permanent[temp[i].y][temp[i].x] = temp[i].color;
+		// judge whether current point is inside canvas
+		if (temp[i].x >= 0 && temp[i].x < WIDTH && temp[i].y >= 0 && temp[i].y < HEIGHT)
+			permanent[temp[i].y][temp[i].x] = temp[i].color;
 		temp[i].color = QColor(); // set invalid
 	}
 	// need not to refresh, just merge temp to permanent
