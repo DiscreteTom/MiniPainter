@@ -11,6 +11,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent),
 	// init color picker button
 	fgColor = new QColor(0, 0, 0);
 	bgColor = new QColor(255, 255, 255);
+	setBtnColor(ui->fgColorBtn, *fgColor);
+	setBtnColor(ui->bgColorBtn, *bgColor);
 
 	// add scene
 	ui->mainVerticalLayout->addWidget(new Scene(this));

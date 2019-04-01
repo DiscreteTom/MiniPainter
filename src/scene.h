@@ -41,7 +41,7 @@ private:
 
 	void drawLine(int x, int y);												// with startX and startY, using Bresenham's Algorithm
 	void BresenhamLine(int x1, int y1, int x2, int y2); // x1 & y1: left bottom point, x2 & y2: right top point
-	void drawRect(int x, int y);
+	void drawRect(int x, int y); // with startX/Y
 
 	int transformY(int y) const { return HEIGHT - y - 1; } // left bottom (0, 0) <-> left top (0, 0)
 	int max(int a, int b) const { return a > b ? a : b; }
