@@ -1,6 +1,8 @@
 #include "scene.h"
 #include <QPainter>
 #include <QDebug>
+#include <QVector>
+#include <QPoint>
 
 Scene::Scene(MainWindow *parent) : QWidget(parent)
 {
@@ -206,6 +208,39 @@ void Scene::drawRect(int x, int y)
 	drawTemp();
 }
 
+void Scene::floodFill(int x, int y)
+{
+	if (rect().contains(x, transformY(y)))
+	{
+		QColor baseColor = permanent[y][x];
+		if (baseColor == window->getFgColor())
+			return;
+		QVector<QPoint> openTable;
+		openTable.push_back(QPoint(x, y));
+		while (openTable.size())
+		{
+			auto p = openTable[0];
+			openTable.pop_front();
+			if (permanent[p.y()][p.x()] == baseColor)
+			{
+				permanent[p.y()][p.x()] = window->getFgColor();
+				// expand
+				if (rect().contains(p.x() + 1, transformY(p.y())))
+					openTable.push_back(QPoint(p.x() + 1, p.y()));
+				if (rect().contains(p.x() - 1, transformY(p.y())))
+					openTable.push_back(QPoint(p.x() - 1, p.y()));
+				if (rect().contains(p.x(), transformY(p.y() + 1)))
+					openTable.push_back(QPoint(p.x(), p.y() + 1));
+				if (rect().contains(p.x(), transformY(p.y() - 1)))
+					openTable.push_back(QPoint(p.x(), p.y() - 1));
+			}
+		}
+	}
+
+	permanentChanged = true;
+	repaint();
+}
+
 void Scene::clearTemp()
 {
 	clearingTemp = true;
@@ -309,20 +344,24 @@ void Scene::mousePressEvent(QMouseEvent *e)
 	case MainWindow::PEN:
 		startX = endX = e->x();
 		startY = endY = transformY(e->y());
+		setMouseTracking(true);
 		break;
 	case MainWindow::LINE:
 		startX = endX = e->x();
 		startY = endY = transformY(e->y());
+		setMouseTracking(true);
 		break;
 	case MainWindow::RECT:
 		startX = endX = e->x();
 		startY = endY = transformY(e->y());
+		setMouseTracking(true);
+		break;
+	case MainWindow::FLOOD:
+		floodFill(e->x(), transformY(e->y()));
 		break;
 	default:
 		break;
 	}
-
-	setMouseTracking(true);
 }
 
 void Scene::mouseMoveEvent(QMouseEvent *e)
