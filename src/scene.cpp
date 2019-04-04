@@ -190,6 +190,7 @@ void Scene::drawRect(int x, int y)
 	endY = y;
 	int index = 0; // index of temp
 
+	// draw rect border
 	for (int i = min(x, startX); i <= max(x, startX); ++i)
 	{
 		temp[index].x = i;
@@ -211,6 +212,17 @@ void Scene::drawRect(int x, int y)
 		temp[index].y = i;
 		temp[index].color = window->getFgColor();
 		++index;
+	}
+	// draw inner pixels
+	if (window->getPolyFillType() == MainWindow::COLOR){
+		for (int x = min(startX, endX) + 1; x < max(startX, endX); ++x){
+			for (int y = min(startY, endY) + 1; y < max(startY, endY); ++y){
+				temp[index].x = x;
+				temp[index].y = y;
+				temp[index].color = window->getBgColor();
+				++index;
+			}
+		}
 	}
 
 	drawTemp();
