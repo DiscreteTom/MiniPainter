@@ -29,8 +29,11 @@ Scene::Scene(MainWindow *parent) : QWidget(parent)
 
 	// init cache
 	cache = new QPixmap(WIDTH, HEIGHT);
+	cache->fill(); // fill with white color
 
 	setAttribute(Qt::WA_OpaquePaintEvent); // enable paint without erase
+
+	repaint(); // draw background
 }
 
 Scene::~Scene()
@@ -54,6 +57,11 @@ void Scene::done()
 		temp[i].color = QColor(); // set invalid
 	}
 	// need not to refresh, just merge temp to permanent
+
+	// drawingTemp and clearingTemp should always be false
+	// just in case
+	drawingTemp = false;
+	clearingTemp = false;
 }
 
 void Scene::drawLine(int x, int y)
@@ -217,6 +225,12 @@ void Scene::floodFill(int x, int y)
 			return;
 		QVector<QPoint> openTable;
 		openTable.push_back(QPoint(x, y));
+		QPainter cachePainter(cache);
+		cachePainter.setPen(window->getFgColor());
+		int left = WIDTH;
+		int right = 0;
+		int top = 0;
+		int bottom = HEIGHT;
 		while (openTable.size())
 		{
 			auto p = openTable[0];
@@ -224,6 +238,16 @@ void Scene::floodFill(int x, int y)
 			if (permanent[p.y()][p.x()] == baseColor)
 			{
 				permanent[p.y()][p.x()] = window->getFgColor();
+				cachePainter.drawPoint(p.x(), transformY(p.y()));
+				// judge border
+				if (p.x() < left)
+					left = p.x();
+				if (p.x() > right)
+					right = p.x();
+				if (p.y() > top)
+					top = p.y();
+				if (p.y() < bottom)
+					bottom = p.y();
 				// expand
 				if (rect().contains(p.x() + 1, transformY(p.y())))
 					openTable.push_back(QPoint(p.x() + 1, p.y()));
@@ -235,17 +259,19 @@ void Scene::floodFill(int x, int y)
 					openTable.push_back(QPoint(p.x(), p.y() - 1));
 			}
 		}
+		cachePainter.end();
+		repaint(left, transformY(top), right - left + 1, top - bottom + 1);
 	}
-
-	permanentChanged = true;
-	repaint();
 }
 
 void Scene::clearTemp()
 {
-	clearingTemp = true;
-
-	repaint(min(startX, endX), transformY(max(startY, endY)), abs(startX - endX) + 1, abs(startY - endY) + 1);
+	// repaint only if start point or end point in canvas
+	if (rect().contains(startX, transformY(startY)) || rect().contains(endX, transformY(endY)))
+	{
+		clearingTemp = true;
+		repaint(min(startX, endX), transformY(max(startY, endY)), abs(startX - endX) + 1, abs(startY - endY) + 1);
+	}
 
 	for (int i = 0; i < HEIGHT * WIDTH && temp[i].color.isValid(); ++i)
 	{
@@ -255,8 +281,12 @@ void Scene::clearTemp()
 
 void Scene::drawTemp()
 {
-	drawingTemp = true;
-	repaint(min(startX, endX), transformY(max(startY, endY)), abs(startX - endX) + 1, abs(startY - endY) + 1);
+	// repaint only if start point or end point in canvas
+	if (rect().contains(startX, transformY(startY)) || rect().contains(endX, transformY(endY)))
+	{
+		drawingTemp = true;
+		repaint(min(startX, endX), transformY(max(startY, endY)), abs(startX - endX) + 1, abs(startY - endY) + 1);
+	}
 }
 
 void Scene::swapTemp()
@@ -284,27 +314,13 @@ void Scene::paintEvent(QPaintEvent *e)
 {
 	QPainter cachePainter(cache);
 	QPainter painter(this);
-	if (!permanentChanged && !clearingTemp && !drawingTemp) // not need to refresh, use cache
+	if (!clearingTemp && !drawingTemp) // not need to refresh, use cache
 	{
-		painter.drawPixmap(0, 0, *cache);
+		painter.drawPixmap(e->rect(), *cache, e->rect());
 	}
-	else // refresh cancas and cache
+	else // refresh canvas and cache
 	{
-		if (permanentChanged)
-		{
-			permanentChanged = false;
-			for (int x = e->rect().left(); x <= e->rect().right(); ++x)
-			{
-				for (int y = e->rect().top(); y <= e->rect().bottom(); ++y)
-				{
-					painter.setPen(permanent[transformY(y)][x]);
-					cachePainter.setPen(permanent[transformY(y)][x]);
-					painter.drawPoint(x, y);
-					cachePainter.drawPoint(x, y);
-				}
-			}
-		}
-		else if (drawingTemp)
+		if (drawingTemp)
 		{
 			drawingTemp = false;
 			for (int i = 0; i < HEIGHT * WIDTH && temp[i].color.isValid(); ++i)
@@ -319,7 +335,7 @@ void Scene::paintEvent(QPaintEvent *e)
 				}
 			}
 		}
-		else if (clearingTemp)
+		else // clearing temp
 		{
 			clearingTemp = false;
 			for (int i = 0; i < HEIGHT * WIDTH && temp[i].color.isValid(); ++i)

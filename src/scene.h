@@ -30,7 +30,6 @@ private:
 	Temp *temp;					// record all temp points. left bottom point is (0, 0). End with invalid color.
 	QPixmap *cache;			// left top is (0, 0), to optimize drawing speed
 
-	bool permanentChanged = true; // draw permanent pixels at begining
 	bool clearingTemp = false;
 	bool drawingTemp = false;
 
