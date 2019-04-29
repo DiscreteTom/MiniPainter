@@ -32,6 +32,7 @@ private:
 
 	bool clearingTemp = false;
 	bool drawingTemp = false;
+	bool refreshingPermanent = false;
 
 	int startX; // x of start point, left bottom is (0, 0)
 	int startY; // y of start point, left bottom is (0, 0)

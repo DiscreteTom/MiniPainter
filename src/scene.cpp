@@ -56,7 +56,21 @@ void Scene::done()
 			permanent[temp[i].y][temp[i].x] = temp[i].color;
 		temp[i].color = QColor(); // set invalid
 	}
-	// need not to refresh, just merge temp to permanent
+
+	// fill rect with bgColor
+	if (window->getTool() == MainWindow::RECT && window->getPolyFillType() == MainWindow::COLOR){
+		int left = max(min(startX, endX) + 1, 0);
+		int right = min(max(startX, endX) - 1, WIDTH - 1);
+		int bottom = max(min(startY, endY) + 1, 0);
+		int top = min(max(startY, endY) - 1, HEIGHT - 1);
+		for (int x = left; x <= right; ++x){
+			for (int y = bottom; y <= top; ++y){
+				permanent[y][x] = window->getBgColor();
+			}
+		}
+		refreshingPermanent = true;
+		repaint(left, transformY(top), right - left + 1, top - bottom + 1);
+	}
 
 	// drawingTemp and clearingTemp should always be false
 	// just in case
@@ -213,17 +227,6 @@ void Scene::drawRect(int x, int y)
 		temp[index].color = window->getFgColor();
 		++index;
 	}
-	// draw inner pixels
-	if (window->getPolyFillType() == MainWindow::COLOR){
-		for (int x = min(startX, endX) + 1; x < max(startX, endX); ++x){
-			for (int y = min(startY, endY) + 1; y < max(startY, endY); ++y){
-				temp[index].x = x;
-				temp[index].y = y;
-				temp[index].color = window->getBgColor();
-				++index;
-			}
-		}
-	}
 
 	drawTemp();
 }
@@ -326,12 +329,23 @@ void Scene::paintEvent(QPaintEvent *e)
 {
 	QPainter cachePainter(cache);
 	QPainter painter(this);
-	if (!clearingTemp && !drawingTemp) // not need to refresh, use cache
+	if (!clearingTemp && !drawingTemp && !refreshingPermanent) // not need to refresh, use cache
 	{
 		painter.drawPixmap(e->rect(), *cache, e->rect());
 	}
 	else // refresh canvas and cache
 	{
+		if (refreshingPermanent){
+			refreshingPermanent = false;
+			for (int x = e->rect().left(); x <= e->rect().right(); ++x){
+				for (int y = e->rect().bottom(); y >= e->rect().top(); --y){
+					painter.setPen(permanent[transformY(y)][x]);
+					cachePainter.setPen(permanent[transformY(y)][x]);
+					painter.drawPoint(x, y);
+					cachePainter.drawPoint(x, y);
+				}
+			}
+		}
 		if (drawingTemp)
 		{
 			drawingTemp = false;
