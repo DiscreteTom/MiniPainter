@@ -1,6 +1,8 @@
 #include "scene.h"
 #include <QPainter>
 #include <QDebug>
+#include <QVector>
+#include <QPoint>
 
 Scene::Scene(MainWindow *parent) : QWidget(parent)
 {
@@ -27,8 +29,11 @@ Scene::Scene(MainWindow *parent) : QWidget(parent)
 
 	// init cache
 	cache = new QPixmap(WIDTH, HEIGHT);
+	cache->fill(); // fill with white color
 
 	setAttribute(Qt::WA_OpaquePaintEvent); // enable paint without erase
+
+	repaint(); // draw background
 }
 
 Scene::~Scene()
@@ -51,7 +56,26 @@ void Scene::done()
 			permanent[temp[i].y][temp[i].x] = temp[i].color;
 		temp[i].color = QColor(); // set invalid
 	}
-	// need not to refresh, just merge temp to permanent
+
+	// fill rect with bgColor
+	if (window->getTool() == MainWindow::RECT && window->getPolyFillType() == MainWindow::COLOR){
+		int left = max(min(startX, endX) + 1, 0);
+		int right = min(max(startX, endX) - 1, WIDTH - 1);
+		int bottom = max(min(startY, endY) + 1, 0);
+		int top = min(max(startY, endY) - 1, HEIGHT - 1);
+		for (int x = left; x <= right; ++x){
+			for (int y = bottom; y <= top; ++y){
+				permanent[y][x] = window->getBgColor();
+			}
+		}
+		refreshingPermanent = true;
+		repaint(left, transformY(top), right - left + 1, top - bottom + 1);
+	}
+
+	// drawingTemp and clearingTemp should always be false
+	// just in case
+	drawingTemp = false;
+	clearingTemp = false;
 }
 
 void Scene::drawLine(int x, int y)
@@ -172,11 +196,97 @@ void Scene::BresenhamLine(int x1, int y1, int x2, int y2)
 	}
 }
 
+void Scene::drawRect(int x, int y)
+{
+	clearTemp();
+
+	endX = x;
+	endY = y;
+	int index = 0; // index of temp
+
+	// draw rect border
+	for (int i = min(x, startX); i <= max(x, startX); ++i)
+	{
+		temp[index].x = i;
+		temp[index].y = startY;
+		temp[index].color = window->getFgColor();
+		++index;
+		temp[index].x = i;
+		temp[index].y = y;
+		temp[index].color = window->getFgColor();
+		++index;
+	}
+	for (int i = min(y, startY); i <= max(y, startY); ++i)
+	{
+		temp[index].x = startX;
+		temp[index].y = i;
+		temp[index].color = window->getFgColor();
+		++index;
+		temp[index].x = x;
+		temp[index].y = i;
+		temp[index].color = window->getFgColor();
+		++index;
+	}
+
+	drawTemp();
+}
+
+void Scene::floodFill(int x, int y)
+{
+	if (rect().contains(x, transformY(y)))
+	{
+		QColor baseColor = permanent[y][x];
+		if (baseColor == window->getFgColor())
+			return;
+		QVector<QPoint> openTable;
+		openTable.push_back(QPoint(x, y));
+		QPainter cachePainter(cache);
+		cachePainter.setPen(window->getFgColor());
+		int left = WIDTH;
+		int right = 0;
+		int top = 0;
+		int bottom = HEIGHT;
+		while (openTable.size())
+		{
+			auto p = openTable[0];
+			openTable.pop_front();
+			if (permanent[p.y()][p.x()] == baseColor)
+			{
+				permanent[p.y()][p.x()] = window->getFgColor();
+				cachePainter.drawPoint(p.x(), transformY(p.y()));
+				// judge border
+				if (p.x() < left)
+					left = p.x();
+				if (p.x() > right)
+					right = p.x();
+				if (p.y() > top)
+					top = p.y();
+				if (p.y() < bottom)
+					bottom = p.y();
+				// expand
+				if (rect().contains(p.x() + 1, transformY(p.y())))
+					openTable.push_back(QPoint(p.x() + 1, p.y()));
+				if (rect().contains(p.x() - 1, transformY(p.y())))
+					openTable.push_back(QPoint(p.x() - 1, p.y()));
+				if (rect().contains(p.x(), transformY(p.y() + 1)))
+					openTable.push_back(QPoint(p.x(), p.y() + 1));
+				if (rect().contains(p.x(), transformY(p.y() - 1)))
+					openTable.push_back(QPoint(p.x(), p.y() - 1));
+			}
+		}
+		cachePainter.end();
+		repaint(left, transformY(top), right - left + 1, top - bottom + 1);
+	}
+}
+
 void Scene::clearTemp()
 {
-	clearingTemp = true;
-
-	repaint(min(startX, endX), transformY(max(startY, endY)), abs(startX - endX) + 1, abs(startY - endY) + 1);
+	// repaint only if start point or end point in canvas
+	if (rect().contains(startX, transformY(startY)) || rect().contains(endX, transformY(endY)))
+	{
+		clearingTemp = true;
+		repaint(min(startX, endX), transformY(max(startY, endY)), abs(startX - endX) + 1, abs(startY - endY) + 1);
+	}
 
 	for (int i = 0; i < HEIGHT * WIDTH && temp[i].color.isValid(); ++i)
 	{
@@ -186,8 +296,12 @@ void Scene::clearTemp()
 
 void Scene::drawTemp()
 {
-	drawingTemp = true;
-	repaint(min(startX, endX), transformY(max(startY, endY)), abs(startX - endX) + 1, abs(startY - endY) + 1);
+	// repaint only if start point or end point in canvas
+	if (rect().contains(startX, transformY(startY)) || rect().contains(endX, transformY(endY)))
+	{
+		drawingTemp = true;
+		repaint(min(startX, endX), transformY(max(startY, endY)), abs(startX - endX) + 1, abs(startY - endY) + 1);
+	}
 }
 
 void Scene::swapTemp()
@@ -215,19 +329,16 @@ void Scene::paintEvent(QPaintEvent *e)
 {
 	QPainter cachePainter(cache);
 	QPainter painter(this);
-	if (!permanentChanged && !clearingTemp && !drawingTemp) // not need to refresh, use cache
+	if (!clearingTemp && !drawingTemp && !refreshingPermanent) // not need to refresh, use cache
 	{
-		painter.drawPixmap(0, 0, *cache);
+		painter.drawPixmap(e->rect(), *cache, e->rect());
 	}
-	else // refresh cancas and cache
+	else // refresh canvas and cache
 	{
-		if (permanentChanged)
-		{
-			permanentChanged = false;
-			for (int x = e->rect().left(); x <= e->rect().right(); ++x)
-			{
-				for (int y = e->rect().top(); y <= e->rect().bottom(); ++y)
-				{
+		if (refreshingPermanent){
+			refreshingPermanent = false;
+			for (int x = e->rect().left(); x <= e->rect().right(); ++x){
+				for (int y = e->rect().bottom(); y >= e->rect().top(); --y){
 					painter.setPen(permanent[transformY(y)][x]);
 					cachePainter.setPen(permanent[transformY(y)][x]);
 					painter.drawPoint(x, y);
@@ -235,7 +346,7 @@ void Scene::paintEvent(QPaintEvent *e)
 				}
 			}
 		}
-		else if (drawingTemp)
+		if (drawingTemp)
 		{
 			drawingTemp = false;
 			for (int i = 0; i < HEIGHT * WIDTH && temp[i].color.isValid(); ++i)
@@ -250,7 +361,7 @@ void Scene::paintEvent(QPaintEvent *e)
 				}
 			}
 		}
-		else if (clearingTemp)
+		else // clearing temp
 		{
 			clearingTemp = false;
 			for (int i = 0; i < HEIGHT * WIDTH && temp[i].color.isValid(); ++i)
@@ -275,16 +386,24 @@ void Scene::mousePressEvent(QMouseEvent *e)
 	case MainWindow::PEN:
 		startX = endX = e->x();
 		startY = endY = transformY(e->y());
+		setMouseTracking(true);
 		break;
 	case MainWindow::LINE:
 		startX = endX = e->x();
-		startY = endY = transformY((e->y()));
+		startY = endY = transformY(e->y());
+		setMouseTracking(true);
+		break;
+	case MainWindow::RECT:
+		startX = endX = e->x();
+		startY = endY = transformY(e->y());
+		setMouseTracking(true);
+		break;
+	case MainWindow::FLOOD:
+		floodFill(e->x(), transformY(e->y()));
 		break;
 	default:
 		break;
 	}
-
-	setMouseTracking(true);
 }
 
 void Scene::mouseMoveEvent(QMouseEvent *e)
@@ -300,6 +419,9 @@ void Scene::mouseMoveEvent(QMouseEvent *e)
 	case MainWindow::LINE:
 		drawLine(e->x(), transformY(e->y()));
 		break;
+	case MainWindow::RECT:
+		drawRect(e->x(), transformY(e->y()));
+		break;
 	default:
 		break;
 	}
@@ -313,6 +435,9 @@ void Scene::mouseReleaseEvent(QMouseEvent *)
 		done();
 		break;
 	case MainWindow::LINE:
+		done();
+		break;
+	case MainWindow::RECT:
 		done();
 		break;
 	default:
