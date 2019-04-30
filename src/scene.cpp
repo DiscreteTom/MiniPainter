@@ -85,73 +85,7 @@ void Scene::drawLine(int x, int y)
 	endX = x;
 	endY = y;
 
-	if (startX <= endX)
-	{
-		if (startY <= endY)
-		{
-			if (abs(startX - endX) >= abs(startY - endY))
-			{
-				// 0 <= gradient <= 1
-				BresenhamLine(startX, startY, endX, endY);
-			}
-			else
-			{
-				// 1 < gradient < infinite
-				BresenhamLine(startY, startX, endY, endX);
-				swapTemp();
-			}
-		}
-		else
-		{
-			if (abs(startX - endX) >= abs(startY - endY))
-			{
-				// -1 <= gradient < 0
-				BresenhamLine(startX, startY, endX, 2 * startY - endY);
-				flipY();
-			}
-			else
-			{
-				// -infinite < gradient < -1
-				BresenhamLine(startY, startX, 2 * startY - endY, endX);
-				swapTemp();
-				flipY();
-			}
-		}
-	}
-	else
-	{
-		// exchange start and end
-		if (endY <= startY)
-		{
-			if (abs(endX - startX) >= abs(endY - startY))
-			{
-				// 0 <= gradient <= 1
-				BresenhamLine(endX, endY, startX, startY);
-			}
-			else
-			{
-				// 1 < gradient < infinite
-				BresenhamLine(endY, endX, startY, startX);
-				swapTemp();
-			}
-		}
-		else
-		{
-			if (abs(endX - startX) >= abs(endY - startY))
-			{
-				// -1 <= gradient < 0
-				BresenhamLine(endX, endY, startX, 2 * endY - startY);
-				flipY(false);
-			}
-			else
-			{
-				// -infinite < gradient < -1
-				BresenhamLine(endY, endX, 2 * endY - startY, startX);
-				swapTemp();
-				flipY(false);
-			}
-		}
-	}
+	getLine(startX, startY, x, y);
 
 	drawTemp();
 }
@@ -193,6 +127,77 @@ void Scene::BresenhamLine(int x1, int y1, int x2, int y2)
 		temp[i - x1].x = i;
 		temp[i - x1].y = currentY;
 		temp[i - x1].color = window->getFgColor();
+	}
+}
+
+void Scene::getLine(int x1, int y1, int x2, int y2)
+{
+	if (x1 <= x2)
+	{
+		if (y1 <= y2)
+		{
+			if (abs(x1 - x2) >= abs(y1 - y2))
+			{
+				// 0 <= gradient <= 1
+				BresenhamLine(x1, y1, x2, y2);
+			}
+			else
+			{
+				// 1 < gradient < infinite
+				BresenhamLine(y1, x1, y2, x2);
+				swapTemp();
+			}
+		}
+		else
+		{
+			if (abs(x1 - x2) >= abs(y1 - y2))
+			{
+				// -1 <= gradient < 0
+				BresenhamLine(x1, y1, x2, 2 * y1 - y2);
+				flipY();
+			}
+			else
+			{
+				// -infinite < gradient < -1
+				BresenhamLine(y1, x1, 2 * y1 - y2, x2);
+				swapTemp();
+				flipY();
+			}
+		}
+	}
+	else
+	{
+		// exchange start and end
+		if (y2 <= y1)
+		{
+			if (abs(x2 - x1) >= abs(y2 - y1))
+			{
+				// 0 <= gradient <= 1
+				BresenhamLine(x2, y2, x1, y1);
+			}
+			else
+			{
+				// 1 < gradient < infinite
+				BresenhamLine(y2, x2, y1, x1);
+				swapTemp();
+			}
+		}
+		else
+		{
+			if (abs(x2 - x1) >= abs(y2 - y1))
+			{
+				// -1 <= gradient < 0
+				BresenhamLine(x2, y2, x1, 2 * y2 - y1);
+				flipY(false);
+			}
+			else
+			{
+				// -infinite < gradient < -1
+				BresenhamLine(y2, x2, 2 * y2 - y1, x1);
+				swapTemp();
+				flipY(false);
+			}
+		}
 	}
 }
 

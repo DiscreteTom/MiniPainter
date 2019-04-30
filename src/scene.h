@@ -39,8 +39,9 @@ private:
 	int endX;
 	int endY;
 
-	void drawLine(int x, int y);												// with startX and startY, using Bresenham's Algorithm
 	void BresenhamLine(int x1, int y1, int x2, int y2); // x1 & y1: left bottom point, x2 & y2: right top point
+	void getLine(int x1, int y1, int x2, int y2); // get line in temp
+	void drawLine(int x, int y);												// with startX and startY, using Bresenham's Algorithm
 	void drawRect(int x, int y); // with startX/Y
 	void floodFill(int x, int y); // flood fill 4-connected-region of (x, y) with foreground color
 
