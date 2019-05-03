@@ -362,6 +362,16 @@ void Scene::getShadow()
 			++currentY;
 		}
 	}
+
+	// repaint border
+	for (int i = 0; i < edges.size(); ++i)
+	{
+		startX = edges[i].p1.x();
+		startY = edges[i].p1.y();
+		drawLine(edges[i].p2.x(), edges[i].p2.y());
+		done();
+	}
+
 	refreshingPermanent = true;
 	repaint();
 }
