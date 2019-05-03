@@ -1,4 +1,5 @@
 #include "scene.h"
+#include <QMap>
 #include <QPainter>
 #include <QDebug>
 #include <QVector>
@@ -58,13 +59,16 @@ void Scene::done()
 	}
 
 	// fill rect with bgColor
-	if (window->getTool() == MainWindow::RECT && window->getPolyFillType() == MainWindow::COLOR){
+	if (window->getTool() == MainWindow::RECT && window->getPolyFillType() == MainWindow::COLOR)
+	{
 		int left = max(min(startX, endX) + 1, 0);
 		int right = min(max(startX, endX) - 1, WIDTH - 1);
 		int bottom = max(min(startY, endY) + 1, 0);
 		int top = min(max(startY, endY) - 1, HEIGHT - 1);
-		for (int x = left; x <= right; ++x){
-			for (int y = bottom; y <= top; ++y){
+		for (int x = left; x <= right; ++x)
+		{
+			for (int y = bottom; y <= top; ++y)
+			{
 				permanent[y][x] = window->getBgColor();
 			}
 		}
@@ -284,6 +288,156 @@ void Scene::floodFill(int x, int y)
 	}
 }
 
+void Scene::getShadow()
+{
+	auto ET = constructET();
+
+	// AEL just store a Node vector
+	QVector<Node> AEL;
+	int currentY;
+	while (AEL.size() || ET.size())
+	{
+		if (!AEL.size())
+		{
+			// AEL is empty, move ET.first() to AEL
+			AEL = ET.first();
+			currentY = ET.firstKey();
+			ET.remove(ET.firstKey());
+		}
+		else
+		{
+			if (ET.firstKey() == currentY)
+			{
+				// merge ET.first() to AEL
+				int i = 0, j = 0;
+				while (i < AEL.size() && j < ET.first().size())
+				{
+					if (AEL[i].x == ET.first()[j].x)
+					{
+						if (AEL[i].deltaX > ET.first()[j].deltaX)
+						{
+							AEL.insert(i, ET.first()[j]);
+							++j;
+							i += 2;
+						}
+						else
+						{
+							++i;
+							++j;
+						}
+					}
+					else if (AEL[i].x > ET.first()[j].x)
+					{
+						AEL.insert(i, ET.first()[j]);
+						++j;
+						i += 2;
+					}
+					else
+					{
+						++i;
+						++j;
+					}
+				}
+				// remove ET.first()
+				ET.remove(ET.firstKey());
+			}
+
+			// draw
+			if (currentY >= 0 && currentY < HEIGHT)
+			{
+				while (AEL.size())
+				{
+					// draw line according to the first 2 items in AEL
+					for (int i = max(0, AEL[0].x); i <= min(WIDTH - 1, AEL[1].x); ++i)
+					{
+						permanent[currentY][i] = window->getBgColor();
+					}
+					// remove the first 2 items in AEL
+					AEL.pop_front();
+					AEL.pop_front();
+				}
+			}
+			else
+			{
+				break;
+			}
+
+			// strip AEL
+			for (int i = 0; i < AEL.size(); ++i)
+			{
+				if (AEL[i].yMax == currentY)
+				{
+					AEL.remove(i);
+				}
+			}
+
+			// get next x
+			for (auto &node : AEL)
+			{
+				node.x += node.deltaX;
+			}
+		}
+	}
+	refreshingPermanent = true;
+	repaint();
+}
+
+QMap<int, QVector<Scene::Node>> Scene::constructET()
+{
+	QMap<int, QVector<Node>> ET;
+	for (int i = 0; i < edges.size(); ++i)
+	{
+		// ignore horizontal edge
+		if (edges[i].p1.y() == edges[i].p2.y())
+			continue;
+
+		// judge upperPoint & lowerPoint
+		QPoint lowerPoint = (edges[i].p1.y() <= edges[i].p2.y()) ? edges[i].p1 : edges[i].p2;
+		QPoint upperPoint = (edges[i].p1.y() <= edges[i].p2.y()) ? edges[i].p2 : edges[i].p1;
+
+		// construct new Node
+		Node node;
+		node.yMax = upperPoint.y();
+		node.x = lowerPoint.x();
+		node.deltaX = (double)(lowerPoint.x() - upperPoint.x()) / (double)(lowerPoint.y() - upperPoint.y());
+
+		// link
+		if (ET.contains(lowerPoint.y()))
+		{
+			// ordered by x asc; if equal, ordered by deltaX
+			for (int i = 0; i < ET[lowerPoint.y()].size(); ++i)
+			{
+				bool flag = true; // need to add to tail of ET
+				if (ET[lowerPoint.y()][i].x == node.x)
+				{
+					if (ET[lowerPoint.y()][i].deltaX > node.deltaX)
+					{
+						ET[lowerPoint.y()].insert(i, node);
+						flag = false;
+						break;
+					}
+				}
+				else if (ET[lowerPoint.y()][i].x > node.x)
+				{
+					ET[lowerPoint.y()].insert(i, node);
+					flag = false;
+					break;
+				}
+			}
+			if (flag)
+			{
+				ET[lowerPoint.y()].push_back(node);
+			}
+		}
+		else
+		{
+			ET.insert(lowerPoint.y(), QVector<Node>());
+			ET[lowerPoint.y].push_back(node);
+		}
+	}
+	return ET;
+}
+
 void Scene::clearTemp()
 {
 	// repaint only if start point or end point in canvas
@@ -340,10 +494,13 @@ void Scene::paintEvent(QPaintEvent *e)
 	}
 	else // refresh canvas and cache
 	{
-		if (refreshingPermanent){
+		if (refreshingPermanent)
+		{
 			refreshingPermanent = false;
-			for (int x = e->rect().left(); x <= e->rect().right(); ++x){
-				for (int y = e->rect().bottom(); y >= e->rect().top(); --y){
+			for (int x = e->rect().left(); x <= e->rect().right(); ++x)
+			{
+				for (int y = e->rect().bottom(); y >= e->rect().top(); --y)
+				{
 					painter.setPen(permanent[transformY(y)][x]);
 					cachePainter.setPen(permanent[transformY(y)][x]);
 					painter.drawPoint(x, y);

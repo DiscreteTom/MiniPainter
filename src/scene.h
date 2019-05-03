@@ -5,6 +5,7 @@
 #include <QPaintEvent>
 #include <QMouseEvent>
 #include "mainwindow.h"
+#include <QVector>
 
 class Scene : public QWidget
 {
@@ -24,6 +25,17 @@ private:
 		int y;
 	};
 
+	struct Edge{
+		QPoint p1;
+		QPoint p2;
+	};
+
+	struct Node{
+		int yMax;
+		int x;
+		double deltaX;
+	};
+
 	MainWindow *window;
 
 	QColor **permanent; // left bottom is (0, 0), all white by default
@@ -38,12 +50,15 @@ private:
 	int startY; // y of start point, left bottom is (0, 0)
 	int endX;
 	int endY;
+	QVector<Edge> edges;
 
 	void BresenhamLine(int x1, int y1, int x2, int y2); // x1 & y1: left bottom point, x2 & y2: right top point
 	void getLine(int x1, int y1, int x2, int y2); // get line in temp
 	void drawLine(int x, int y);												// with startX and startY, using Bresenham's Algorithm
 	void drawRect(int x, int y); // with startX/Y
 	void floodFill(int x, int y); // flood fill 4-connected-region of (x, y) with foreground color
+	void getShadow(); // according to edges
+	QMap<int, QVector<Node>> constructET();
 
 	int transformY(int y) const { return HEIGHT - y - 1; } // left bottom (0, 0) <-> left top (0, 0)
 	int max(int a, int b) const { return a > b ? a : b; }
