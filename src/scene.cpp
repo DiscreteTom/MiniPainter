@@ -303,40 +303,43 @@ void Scene::getShadow()
 			AEL = ET.first();
 			currentY = ET.firstKey();
 			ET.remove(ET.firstKey());
+			++currentY;
 		}
 		else
 		{
-			if (ET.firstKey() == currentY)
+			if (ET.size() && ET.firstKey() == currentY)
 			{
 				// merge ET.first() to AEL
-				int i = 0, j = 0;
-				while (i < AEL.size() && j < ET.first().size())
+				int i = 0;
+				while (i < AEL.size() && ET.first().size())
 				{
-					if (AEL[i].x == ET.first()[j].x)
+					if (AEL[i].x == ET.first()[0].x)
 					{
-						if (AEL[i].deltaX > ET.first()[j].deltaX)
+						if (AEL[i].deltaX > ET.first()[0].deltaX)
 						{
-							AEL.insert(i, ET.first()[j]);
-							++j;
+							AEL.insert(i, ET.first()[0]);
+							ET.first().pop_front();
 							i += 2;
 						}
 						else
 						{
 							++i;
-							++j;
 						}
 					}
-					else if (AEL[i].x > ET.first()[j].x)
+					else if (AEL[i].x > ET.first()[0].x)
 					{
-						AEL.insert(i, ET.first()[j]);
-						++j;
+						AEL.insert(i, ET.first()[0]);
+						ET.first().pop_front();
 						i += 2;
 					}
 					else
 					{
 						++i;
-						++j;
 					}
+				}
+				while (ET.first().size()){
+					AEL.push_back(ET.first()[0]);
+					ET.first().pop_front();
 				}
 				// remove ET.first()
 				ET.remove(ET.firstKey());
@@ -345,16 +348,20 @@ void Scene::getShadow()
 			// draw
 			if (currentY >= 0 && currentY < HEIGHT)
 			{
-				while (AEL.size())
+				auto AEL_copy = AEL;
+				while (AEL_copy.size())
 				{
+					if (AEL_copy.size() == 1){
+						break;
+					}
 					// draw line according to the first 2 items in AEL
-					for (int i = max(0, AEL[0].x); i <= min(WIDTH - 1, AEL[1].x); ++i)
+					for (int i = max(0, AEL_copy[0].x); i <= min(WIDTH - 1, AEL_copy[1].x); ++i)
 					{
 						permanent[currentY][i] = window->getBgColor();
 					}
 					// remove the first 2 items in AEL
-					AEL.pop_front();
-					AEL.pop_front();
+					AEL_copy.pop_front();
+					AEL_copy.pop_front();
 				}
 			}
 			else
@@ -376,6 +383,8 @@ void Scene::getShadow()
 			{
 				node.x += node.deltaX;
 			}
+
+			++currentY;
 		}
 	}
 	refreshingPermanent = true;
@@ -587,6 +596,10 @@ void Scene::mousePressEvent(QMouseEvent *e)
 				drawLine(e->x(), transformY(e->y()));
 				done();
 				edges.push_back(Edge(QPoint(startX, startY), QPoint(endX, endY)));
+
+				// add shadow
+				if (window->getPolyFillType() == MainWindow::SHADOW)
+					getShadow();
 			}
 		}
 		else // drawingPolygon == false
