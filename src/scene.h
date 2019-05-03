@@ -35,7 +35,7 @@ private:
 	struct Node
 	{
 		int yMax;
-		int x;
+		double x;
 		double deltaX;
 	};
 
