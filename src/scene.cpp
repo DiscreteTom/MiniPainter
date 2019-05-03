@@ -311,37 +311,9 @@ void Scene::getShadow()
 			if (ET.size() && ET.firstKey() == currentY)
 			{
 				// merge ET.first() to AEL
-				int i = 0;
-				while (i < AEL.size() && ET.first().size())
-				{
-					if (AEL[i].x == ET.first()[0].x)
-					{
-						if (AEL[i].deltaX > ET.first()[0].deltaX)
-						{
-							AEL.insert(i, ET.first()[0]);
-							ET.first().pop_front();
-							i += 2;
-						}
-						else
-						{
-							++i;
-						}
-					}
-					else if (AEL[i].x > ET.first()[0].x)
-					{
-						AEL.insert(i, ET.first()[0]);
-						ET.first().pop_front();
-						i += 2;
-					}
-					else
-					{
-						++i;
-					}
-				}
-				while (ET.first().size()){
-					AEL.push_back(ET.first()[0]);
-					ET.first().pop_front();
-				}
+				AEL.append(ET.first());
+				std::sort(AEL.begin(), AEL.end());
+
 				// remove ET.first()
 				ET.remove(ET.firstKey());
 			}
