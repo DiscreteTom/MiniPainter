@@ -25,12 +25,15 @@ private:
 		int y;
 	};
 
-	struct Edge{
+	struct Edge
+	{
 		QPoint p1;
 		QPoint p2;
+		Edge(QPoint p1 = QPoint(), QPoint p2 = QPoint()) : p1(p1), p2(p2) {}
 	};
 
-	struct Node{
+	struct Node
+	{
 		int yMax;
 		int x;
 		double deltaX;
@@ -45,6 +48,7 @@ private:
 	bool clearingTemp = false;
 	bool drawingTemp = false;
 	bool refreshingPermanent = false;
+	bool drawingPolygon = false;
 
 	int startX; // x of start point, left bottom is (0, 0)
 	int startY; // y of start point, left bottom is (0, 0)
@@ -53,11 +57,11 @@ private:
 	QVector<Edge> edges;
 
 	void BresenhamLine(int x1, int y1, int x2, int y2); // x1 & y1: left bottom point, x2 & y2: right top point
-	void getLine(int x1, int y1, int x2, int y2); // get line in temp
+	void getLine(int x1, int y1, int x2, int y2);				// get line in temp
 	void drawLine(int x, int y);												// with startX and startY, using Bresenham's Algorithm
-	void drawRect(int x, int y); // with startX/Y
-	void floodFill(int x, int y); // flood fill 4-connected-region of (x, y) with foreground color
-	void getShadow(); // according to edges
+	void drawRect(int x, int y);												// with startX/Y
+	void floodFill(int x, int y);												// flood fill 4-connected-region of (x, y) with foreground color
+	void getShadow();																		// according to edges
 	QMap<int, QVector<Node>> constructET();
 
 	int transformY(int y) const { return HEIGHT - y - 1; } // left bottom (0, 0) <-> left top (0, 0)
@@ -67,9 +71,9 @@ private:
 
 	void clearTemp(); // set temp[] to empty and erase them on canvas according to startX/Y & endX/Y
 	void drawTemp();
-	void swapTemp(); // temp[].x <-> temp[].y
+	void swapTemp();										 // temp[].x <-> temp[].y
 	void flipY(bool usingStartY = true); // temp[].y = 2 * startY - temp[].y
-	void done(); // merge temp to permanent
+	void done();												 // merge temp to permanent
 
 protected:
 	virtual void paintEvent(QPaintEvent *e);

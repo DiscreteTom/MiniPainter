@@ -405,9 +405,9 @@ QMap<int, QVector<Scene::Node>> Scene::constructET()
 		if (ET.contains(lowerPoint.y()))
 		{
 			// ordered by x asc; if equal, ordered by deltaX
+			bool flag = true; // need to add to tail of ET
 			for (int i = 0; i < ET[lowerPoint.y()].size(); ++i)
 			{
-				bool flag = true; // need to add to tail of ET
 				if (ET[lowerPoint.y()][i].x == node.x)
 				{
 					if (ET[lowerPoint.y()][i].deltaX > node.deltaX)
@@ -432,7 +432,7 @@ QMap<int, QVector<Scene::Node>> Scene::constructET()
 		else
 		{
 			ET.insert(lowerPoint.y(), QVector<Node>());
-			ET[lowerPoint.y].push_back(node);
+			ET[lowerPoint.y()].push_back(node);
 		}
 	}
 	return ET;
@@ -563,6 +563,40 @@ void Scene::mousePressEvent(QMouseEvent *e)
 	case MainWindow::FLOOD:
 		floodFill(e->x(), transformY(e->y()));
 		break;
+	case MainWindow::POLYGON:
+		if (drawingPolygon)
+		{
+			if (e->button() == Qt::LeftButton)
+			{
+				// add an edge
+				edges.push_back(Edge(QPoint(startX, startY), QPoint(e->x(), transformY(e->y()))));
+
+				done();
+				startX = e->x();
+				startY = transformY(e->y());
+			}
+			else if (e->button() == Qt::RightButton)
+			{
+				// draw the last line
+				drawingPolygon = false;
+				done();
+				setMouseTracking(false);
+				// add the last edge
+				startX = edges[0].p1.x();
+				startY = edges[0].p1.y();
+				drawLine(e->x(), transformY(e->y()));
+				edges.push_back(Edge(QPoint(startX, startY), QPoint(endX, endY)));
+			}
+		}
+		else
+		{
+			edges.clear();
+			drawingPolygon = true;
+			startX = endX = e->x();
+			startY = endY = transformY(e->y());
+			setMouseTracking(true);
+		}
+		break;
 	default:
 		break;
 	}
@@ -584,6 +618,9 @@ void Scene::mouseMoveEvent(QMouseEvent *e)
 	case MainWindow::RECT:
 		drawRect(e->x(), transformY(e->y()));
 		break;
+	case MainWindow::POLYGON:
+		drawLine(e->x(), transformY(e->y()));
+		break;
 	default:
 		break;
 	}
@@ -595,16 +632,20 @@ void Scene::mouseReleaseEvent(QMouseEvent *)
 	{
 	case MainWindow::PEN:
 		done();
+		setMouseTracking(false);
 		break;
 	case MainWindow::LINE:
 		done();
+		setMouseTracking(false);
 		break;
 	case MainWindow::RECT:
 		done();
+		setMouseTracking(false);
+		break;
+	case MainWindow::POLYGON:
 		break;
 	default:
+		setMouseTracking(false);
 		break;
 	}
-
-	setMouseTracking(false);
 }
