@@ -589,10 +589,10 @@ void Scene::mousePressEvent(QMouseEvent *e)
 				edges.push_back(Edge(QPoint(startX, startY), QPoint(endX, endY)));
 			}
 		}
-		else
+		else // drawingPolygon == false
 		{
-			edges.clear();
 			drawingPolygon = true;
+			edges.clear();
 			startX = endX = e->x();
 			startY = endY = transformY(e->y());
 			setMouseTracking(true);
