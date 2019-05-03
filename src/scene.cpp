@@ -586,14 +586,11 @@ void Scene::mousePressEvent(QMouseEvent *e)
 			}
 			else if (e->button() == Qt::RightButton)
 			{
-				// draw the last line
 				drawingPolygon = false;
-				done();
 				setMouseTracking(false);
+				clearTemp();
 				// add the last edge
-				startX = edges[0].p1.x();
-				startY = edges[0].p1.y();
-				drawLine(e->x(), transformY(e->y()));
+				drawLine(edges[0].p1.x(), edges[0].p1.y());
 				done();
 				edges.push_back(Edge(QPoint(startX, startY), QPoint(endX, endY)));
 
