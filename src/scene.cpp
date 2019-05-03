@@ -585,6 +585,7 @@ void Scene::mousePressEvent(QMouseEvent *e)
 				startX = edges[0].p1.x();
 				startY = edges[0].p1.y();
 				drawLine(e->x(), transformY(e->y()));
+				done();
 				edges.push_back(Edge(QPoint(startX, startY), QPoint(endX, endY)));
 			}
 		}
