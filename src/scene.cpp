@@ -4,6 +4,7 @@
 #include <QDebug>
 #include <QVector>
 #include <QPoint>
+#include <QtAlgorithms>
 
 Scene::Scene(MainWindow *parent) : QWidget(parent)
 {
@@ -383,6 +384,8 @@ void Scene::getShadow()
 			{
 				node.x += node.deltaX;
 			}
+			// sort AEL
+			std::sort(AEL.begin(), AEL.end());
 
 			++currentY;
 		}

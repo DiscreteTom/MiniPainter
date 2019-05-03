@@ -37,6 +37,7 @@ private:
 		int yMax;
 		double x;
 		double deltaX;
+		bool operator<(const Node &ano) const { return (this->x == ano.x) ? (this->deltaX < ano.deltaX) : (this->x < ano.x); }
 	};
 
 	MainWindow *window;
