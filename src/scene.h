@@ -29,6 +29,8 @@ private:
 	{
 		QPoint p1;
 		QPoint p2;
+		QPoint lowerPoint;
+		QPoint upperPoint;
 		Edge(QPoint p1 = QPoint(), QPoint p2 = QPoint()) : p1(p1), p2(p2) {}
 	};
 
@@ -37,6 +39,7 @@ private:
 		int yMax;
 		double x;
 		double deltaX;
+		int edgeIndex;
 		bool operator<(const Node &ano) const { return (this->x == ano.x) ? (this->deltaX < ano.deltaX) : (this->x < ano.x); }
 	};
 

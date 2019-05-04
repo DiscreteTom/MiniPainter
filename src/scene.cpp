@@ -322,11 +322,36 @@ void Scene::getShadow()
 			if (currentY >= 0 && currentY < HEIGHT)
 			{
 				auto AEL_copy = AEL;
+				// process extreme singularity points
+				QVector<int> reachBorder; // -1 means lower border, 1 means upper border, 0 means normal
+				for (int i = 0; i < AEL_copy.size(); ++i)
+				{
+					if (edges[AEL_copy[i].edgeIndex].upperPoint.y() == currentY){
+						reachBorder.push_back(1);
+					} else if (edges[AEL_copy[i].edgeIndex].lowerPoint.y() == currentY){
+						reachBorder.push_back(-1);
+					} else {
+						reachBorder.push_back(0);
+					}
+				}
+				bool flag = true; // means still processing extreme singularity points
+				while (flag){
+					flag = false;
+					for (int i = 0; i < reachBorder.size() - 1; ++i){
+						if (reachBorder[i] * reachBorder[i + 1] == -1)
+						{
+							if (reachBorder[i] == -1)
+								++i; // i = i + 1, remove the lower edge
+							reachBorder.remove(i);
+							AEL_copy.remove(i);
+							flag = true; // continue loop
+							break;
+						}
+					}
+				}
+
 				while (AEL_copy.size())
 				{
-					if (AEL_copy.size() == 1){
-						break;
-					}
 					// draw line according to the first 2 items in AEL
 					for (int i = max(0, AEL_copy[0].x); i <= min(WIDTH - 1, AEL_copy[1].x); ++i)
 					{
@@ -348,6 +373,7 @@ void Scene::getShadow()
 				if (AEL[i].yMax == currentY)
 				{
 					AEL.remove(i);
+					--i;
 				}
 			}
 
@@ -388,12 +414,15 @@ QMap<int, QVector<Scene::Node>> Scene::constructET()
 		// judge upperPoint & lowerPoint
 		QPoint lowerPoint = (edges[i].p1.y() <= edges[i].p2.y()) ? edges[i].p1 : edges[i].p2;
 		QPoint upperPoint = (edges[i].p1.y() <= edges[i].p2.y()) ? edges[i].p2 : edges[i].p1;
+		edges[i].lowerPoint = lowerPoint;
+		edges[i].upperPoint = upperPoint;
 
 		// construct new Node
 		Node node;
 		node.yMax = upperPoint.y();
 		node.x = lowerPoint.x();
 		node.deltaX = (double)(lowerPoint.x() - upperPoint.x()) / (double)(lowerPoint.y() - upperPoint.y());
+		node.edgeIndex = i;
 
 		// link
 		if (ET.contains(lowerPoint.y()))
