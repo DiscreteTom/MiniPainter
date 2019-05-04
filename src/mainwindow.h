@@ -37,7 +37,6 @@ public:
 	// state getter
 	Tool getTool() const;
 	PolyFillType getPolyFillType() const;
-	int getShadowAngle() const { return ui->angleSb->value(); }
 	int getShadowInterval() const { return ui->intervalSb->value(); }
 	QColor getFgColor() const { return *fgColor; }
 	QColor getBgColor() const { return *bgColor; }
