@@ -20,9 +20,10 @@ private:
 
 	struct Temp // temp pixels
 	{
-		QColor color;
 		int x;
 		int y;
+		QColor color;
+		Temp(int x = 0, int y = 0 ,QColor color = QColor()):x(x), y(y), color(color){}
 	};
 
 	struct Edge
@@ -46,7 +47,7 @@ private:
 	MainWindow *window;
 
 	QColor **permanent; // left bottom is (0, 0), all white by default
-	Temp *temp;					// record all temp points. left bottom point is (0, 0). End with invalid color.
+	QVector<Temp> temp;					// record all temp points. left bottom point is (0, 0)
 	QPixmap *cache;			// left top is (0, 0), to optimize drawing speed
 
 	bool clearingTemp = false;

@@ -22,12 +22,6 @@ Scene::Scene(MainWindow *parent) : QWidget(parent)
 			permanent[i][j] = QColor(255, 255, 255); // white
 		}
 	}
-	// init temp
-	temp = new Temp[HEIGHT * WIDTH];
-	for (int i = 0; i < HEIGHT * WIDTH; ++i)
-	{
-		temp[i].color = QColor(); // invalid color
-	}
 
 	// init cache
 	cache = new QPixmap(WIDTH, HEIGHT);
@@ -44,20 +38,19 @@ Scene::~Scene()
 	{
 		delete[] permanent[i];
 	}
-	delete[] temp;
 	delete[] permanent;
 }
 
 void Scene::done()
 {
 	// merge temp to permanent
-	for (int i = 0; i < HEIGHT * WIDTH && temp[i].color.isValid(); ++i)
+	for (int i = 0; i < temp.size(); ++i)
 	{
 		// judge whether current point is inside canvas
 		if (temp[i].x >= 0 && temp[i].x < WIDTH && temp[i].y >= 0 && temp[i].y < HEIGHT)
 			permanent[temp[i].y][temp[i].x] = temp[i].color;
-		temp[i].color = QColor(); // set invalid
 	}
+	temp.clear();
 
 	// drawingTemp and clearingTemp should always be false
 	// just in case
@@ -79,12 +72,7 @@ void Scene::drawLine(int x, int y)
 
 void Scene::BresenhamLine(int x1, int y1, int x2, int y2)
 {
-	// check x1, y1, x2, y2, temp
-	if (temp[0].color.isValid())
-	{
-		qDebug() << "Scene::BresenhamLine: temp is not empty";
-		return;
-	}
+	// check x1, y1, x2, y2
 	if (x1 > x2)
 	{
 		qDebug() << "bad x";
@@ -101,6 +89,7 @@ void Scene::BresenhamLine(int x1, int y1, int x2, int y2)
 		return;
 	}
 
+	temp.clear();
 	int e = -(x2 - x1);
 	int currentY = y1;
 	for (int i = x1; i <= x2; ++i)
@@ -111,9 +100,7 @@ void Scene::BresenhamLine(int x1, int y1, int x2, int y2)
 			++currentY;
 		}
 		e += 2 * (y2 - y1);
-		temp[i - x1].x = i;
-		temp[i - x1].y = currentY;
-		temp[i - x1].color = window->getFgColor();
+		temp.push_back(Temp(i, currentY, window->getFgColor())); // temp[i - x1]
 	}
 }
 
@@ -194,30 +181,17 @@ void Scene::drawRect(int x, int y)
 
 	endX = x;
 	endY = y;
-	int index = 0; // index of temp
 
 	// draw rect border
 	for (int i = min(x, startX); i <= max(x, startX); ++i)
 	{
-		temp[index].x = i;
-		temp[index].y = startY;
-		temp[index].color = window->getFgColor();
-		++index;
-		temp[index].x = i;
-		temp[index].y = y;
-		temp[index].color = window->getFgColor();
-		++index;
+		temp.push_back(Temp(i, startY, window->getFgColor()));
+		temp.push_back(Temp(i, endY, window->getFgColor()));
 	}
 	for (int i = min(y, startY); i <= max(y, startY); ++i)
 	{
-		temp[index].x = startX;
-		temp[index].y = i;
-		temp[index].color = window->getFgColor();
-		++index;
-		temp[index].x = x;
-		temp[index].y = i;
-		temp[index].color = window->getFgColor();
-		++index;
+		temp.push_back(Temp(startX, i, window->getFgColor()));
+		temp.push_back(Temp(x, i, window->getFgColor()));
 	}
 
 	drawTemp();
@@ -459,10 +433,7 @@ void Scene::clearTemp()
 		repaint(min(startX, endX), transformY(max(startY, endY)), abs(startX - endX) + 1, abs(startY - endY) + 1);
 	}
 
-	for (int i = 0; i < HEIGHT * WIDTH && temp[i].color.isValid(); ++i)
-	{
-		temp[i].color = QColor(); // set invalid
-	}
+	temp.clear();
 }
 
 void Scene::drawTemp()
@@ -477,7 +448,7 @@ void Scene::drawTemp()
 
 void Scene::swapTemp()
 {
-	for (int i = 0; i < WIDTH * HEIGHT && temp[i].color.isValid(); ++i)
+	for (int i = 0; i < temp.size(); ++i)
 	{
 		int t = temp[i].x;
 		temp[i].x = temp[i].y;
@@ -487,7 +458,7 @@ void Scene::swapTemp()
 
 void Scene::flipY(bool usingStartY)
 {
-	for (int i = 0; i < WIDTH * HEIGHT && temp[i].color.isValid(); ++i)
+	for (int i = 0; i < temp.size(); ++i)
 	{
 		if (usingStartY)
 			temp[i].y = 2 * startY - temp[i].y;
@@ -523,7 +494,7 @@ void Scene::paintEvent(QPaintEvent *e)
 		if (drawingTemp)
 		{
 			drawingTemp = false;
-			for (int i = 0; i < HEIGHT * WIDTH && temp[i].color.isValid(); ++i)
+			for (int i = 0; i < temp.size(); ++i)
 			{
 				if (e->rect().contains(temp[i].x, transformY(temp[i].y)))
 				{
@@ -538,7 +509,7 @@ void Scene::paintEvent(QPaintEvent *e)
 		else // clearing temp
 		{
 			clearingTemp = false;
-			for (int i = 0; i < HEIGHT * WIDTH && temp[i].color.isValid(); ++i)
+			for (int i = 0; i < temp.size(); ++i)
 			{
 				if (e->rect().contains(temp[i].x, transformY(temp[i].y)))
 				{
