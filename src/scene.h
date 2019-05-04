@@ -65,7 +65,7 @@ private:
 	void drawLine(int x, int y);												// with startX and startY, using Bresenham's Algorithm
 	void drawRect(int x, int y);												// with startX/Y
 	void floodFill(int x, int y);												// flood fill 4-connected-region of (x, y) with foreground color
-	void getShadow();																		// according to edges
+	void fill(int step = 0);														// according to edges
 	QMap<int, QVector<Node>> constructET();
 
 	int transformY(int y) const { return HEIGHT - y - 1; } // left bottom (0, 0) <-> left top (0, 0)

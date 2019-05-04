@@ -59,24 +59,6 @@ void Scene::done()
 		temp[i].color = QColor(); // set invalid
 	}
 
-	// fill rect with bgColor
-	if (window->getTool() == MainWindow::RECT && window->getPolyFillType() == MainWindow::COLOR)
-	{
-		int left = max(min(startX, endX) + 1, 0);
-		int right = min(max(startX, endX) - 1, WIDTH - 1);
-		int bottom = max(min(startY, endY) + 1, 0);
-		int top = min(max(startY, endY) - 1, HEIGHT - 1);
-		for (int x = left; x <= right; ++x)
-		{
-			for (int y = bottom; y <= top; ++y)
-			{
-				permanent[y][x] = window->getBgColor();
-			}
-		}
-		refreshingPermanent = true;
-		repaint(left, transformY(top), right - left + 1, top - bottom + 1);
-	}
-
 	// drawingTemp and clearingTemp should always be false
 	// just in case
 	drawingTemp = false;
@@ -289,7 +271,7 @@ void Scene::floodFill(int x, int y)
 	}
 }
 
-void Scene::getShadow()
+void Scene::fill(int step)
 {
 	auto ET = constructET();
 
@@ -319,25 +301,32 @@ void Scene::getShadow()
 			}
 
 			// draw
-			if (currentY >= 0 && currentY < HEIGHT)
+			if (currentY >= 0 && currentY < HEIGHT && (step == 0 || currentY % (step + 1) == 0))
 			{
 				auto AEL_copy = AEL;
 				// process extreme singularity points
 				QVector<int> reachBorder; // -1 means lower border, 1 means upper border, 0 means normal
 				for (int i = 0; i < AEL_copy.size(); ++i)
 				{
-					if (edges[AEL_copy[i].edgeIndex].upperPoint.y() == currentY){
+					if (edges[AEL_copy[i].edgeIndex].upperPoint.y() == currentY)
+					{
 						reachBorder.push_back(1);
-					} else if (edges[AEL_copy[i].edgeIndex].lowerPoint.y() == currentY){
+					}
+					else if (edges[AEL_copy[i].edgeIndex].lowerPoint.y() == currentY)
+					{
 						reachBorder.push_back(-1);
-					} else {
+					}
+					else
+					{
 						reachBorder.push_back(0);
 					}
 				}
 				bool flag = true; // means still processing extreme singularity points
-				while (flag){
+				while (flag)
+				{
 					flag = false;
-					for (int i = 0; i < reachBorder.size() - 1; ++i){
+					for (int i = 0; i < reachBorder.size() - 1; ++i)
+					{
 						if (reachBorder[i] * reachBorder[i + 1] == -1)
 						{
 							if (reachBorder[i] == -1)
@@ -362,7 +351,7 @@ void Scene::getShadow()
 					AEL_copy.pop_front();
 				}
 			}
-			else
+			else if (currentY < 0 || currentY >= HEIGHT) // overflow
 			{
 				break;
 			}
@@ -609,8 +598,17 @@ void Scene::mousePressEvent(QMouseEvent *e)
 				edges.push_back(Edge(QPoint(startX, startY), QPoint(endX, endY)));
 
 				// add shadow
-				if (window->getPolyFillType() == MainWindow::SHADOW)
-					getShadow();
+				switch (window->getPolyFillType())
+				{
+				case MainWindow::SHADOW:
+					fill(window->getShadowInterval());
+					break;
+				case MainWindow::COLOR:
+					fill();
+					break;
+				default:
+					break;
+				}
 			}
 		}
 		else // drawingPolygon == false
@@ -666,6 +664,23 @@ void Scene::mouseReleaseEvent(QMouseEvent *)
 	case MainWindow::RECT:
 		done();
 		setMouseTracking(false);
+		edges.clear();
+		edges.push_back(Edge(QPoint(startX, startY), QPoint(startX, endY)));
+		edges.push_back(Edge(QPoint(startX, startY), QPoint(endX, startY)));
+		edges.push_back(Edge(QPoint(endX, endY), QPoint(startX, endY)));
+		edges.push_back(Edge(QPoint(endX, endY), QPoint(endX, startY)));
+		switch (window->getPolyFillType())
+		{
+		case MainWindow::SHADOW:
+			fill(window->getShadowInterval());
+			break;
+		case MainWindow::COLOR:
+			fill();
+			break;
+		default:
+			break;
+		}
+
 		break;
 	case MainWindow::POLYGON:
 		break;
