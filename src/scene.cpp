@@ -427,6 +427,8 @@ QMap<int, QVector<Scene::Node>> Scene::constructET()
 
 void Scene::drawEllipse(int x, int y)
 {
+	clearTemp();
+
 	endX = x;
 	endY = y;
 
@@ -445,7 +447,9 @@ void Scene::drawEllipse(int x, int y)
 	{
 		double nextX = currentX * cos - a / b * currentY * sin;
 		double nextY = currentY * cos + b / a * currentX * sin;
-		edges.push_back(Edge(QPoint(currentX + center.x(), currentY + center.y()), QPoint(nextX + center.x(), nextY + center.y())));
+		auto e = Edge(QPoint(currentX + center.x(), currentY + center.y()), QPoint(nextX + center.x(), nextY + center.y()));
+		if (e.p1 != e.p2)
+			edges.push_back(e);
 		currentX = nextX;
 		currentY = nextY;
 	}
