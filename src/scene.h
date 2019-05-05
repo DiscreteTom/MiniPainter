@@ -77,7 +77,7 @@ private:
 	void clearTemp(); // set temp[] to empty and erase them on canvas according to startX/Y & endX/Y
 	void drawTemp();
 	void swapTemp();										 // temp[].x <-> temp[].y
-	void flipY(bool usingStartY = true); // temp[].y = 2 * startY - temp[].y
+	void flipY(int centerY); // temp[].y = 2 * centerY - temp[].y
 	void done();												 // merge temp to permanent
 
 protected:

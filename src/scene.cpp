@@ -128,14 +128,14 @@ void Scene::getLine(int x1, int y1, int x2, int y2)
 			{
 				// -1 <= gradient < 0
 				BresenhamLine(x1, y1, x2, 2 * y1 - y2);
-				flipY();
+				flipY(y1);
 			}
 			else
 			{
 				// -infinite < gradient < -1
 				BresenhamLine(y1, x1, 2 * y1 - y2, x2);
 				swapTemp();
-				flipY();
+				flipY(y1);
 			}
 		}
 	}
@@ -162,14 +162,14 @@ void Scene::getLine(int x1, int y1, int x2, int y2)
 			{
 				// -1 <= gradient < 0
 				BresenhamLine(x2, y2, x1, 2 * y2 - y1);
-				flipY(false);
+				flipY(y2);
 			}
 			else
 			{
 				// -infinite < gradient < -1
 				BresenhamLine(y2, x2, 2 * y2 - y1, x1);
 				swapTemp();
-				flipY(false);
+				flipY(y2);
 			}
 		}
 	}
@@ -456,14 +456,11 @@ void Scene::swapTemp()
 	}
 }
 
-void Scene::flipY(bool usingStartY)
+void Scene::flipY(int centerY)
 {
 	for (int i = 0; i < temp.size(); ++i)
 	{
-		if (usingStartY)
-			temp[i].y = 2 * startY - temp[i].y;
-		else
-			temp[i].y = 2 * endY - temp[i].y;
+		temp[i].y = 2 * centerY - temp[i].y;
 	}
 }
 
