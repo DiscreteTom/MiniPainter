@@ -5,6 +5,7 @@
 #include <QVector>
 #include <QPoint>
 #include <QtAlgorithms>
+#include <QtMath>
 
 Scene::Scene(MainWindow *parent) : QWidget(parent)
 {
@@ -128,14 +129,14 @@ void Scene::getLine(int x1, int y1, int x2, int y2)
 			{
 				// -1 <= gradient < 0
 				BresenhamLine(x1, y1, x2, 2 * y1 - y2);
-				flipY();
+				flipY(y1);
 			}
 			else
 			{
 				// -infinite < gradient < -1
 				BresenhamLine(y1, x1, 2 * y1 - y2, x2);
 				swapTemp();
-				flipY();
+				flipY(y1);
 			}
 		}
 	}
@@ -162,14 +163,14 @@ void Scene::getLine(int x1, int y1, int x2, int y2)
 			{
 				// -1 <= gradient < 0
 				BresenhamLine(x2, y2, x1, 2 * y2 - y1);
-				flipY(false);
+				flipY(y2);
 			}
 			else
 			{
 				// -infinite < gradient < -1
 				BresenhamLine(y2, x2, 2 * y2 - y1, x1);
 				swapTemp();
-				flipY(false);
+				flipY(y2);
 			}
 		}
 	}
@@ -424,6 +425,49 @@ QMap<int, QVector<Scene::Node>> Scene::constructET()
 	return ET;
 }
 
+void Scene::drawEllipse(int x, int y)
+{
+	clearTemp();
+
+	endX = x;
+	endY = y;
+
+	// using Polygon Approximation Method, edges of polygon is 360
+	double a = abs(startX - endX) / 2;
+	double b = abs(startY - endY) / 2;
+	QPoint center = QPoint((x + startX) / 2, (y + startY) / 2);
+	int n = 360; // edges' number of polygon
+
+	edges.clear();
+	double sin = qSin(qDegreesToRadians(double(360 / n)));
+	double cos = qCos(qDegreesToRadians(double(360 / n)));
+	double currentX = a;
+	double currentY = 0;
+	for (int i = 0; i < n; ++i)
+	{
+		double nextX = currentX * cos - a / b * currentY * sin;
+		double nextY = currentY * cos + b / a * currentX * sin;
+		auto e = Edge(QPoint(currentX + center.x(), currentY + center.y()), QPoint(nextX + center.x(), nextY + center.y()));
+		if (e.p1 != e.p2)
+			edges.push_back(e);
+		currentX = nextX;
+		currentY = nextY;
+	}
+	// add the last edge
+	edges.push_back(Edge(QPoint(currentX + center.x(), currentY + center.y()), edges[0].p1));
+
+	// put all lines in temp
+	QVector<Temp> result;
+	for (int i = 0; i < edges.size(); ++i)
+	{
+		getLine(edges[i].p1.x(), edges[i].p1.y(), edges[i].p2.x(), edges[i].p2.y());
+		result.append(temp);
+	}
+	temp = result;
+
+	drawTemp();
+}
+
 void Scene::clearTemp()
 {
 	// repaint only if start point or end point in canvas
@@ -442,7 +486,7 @@ void Scene::drawTemp()
 	if (rect().contains(startX, transformY(startY)) || rect().contains(endX, transformY(endY)))
 	{
 		drawingTemp = true;
-		repaint(min(startX, endX), transformY(max(startY, endY)), abs(startX - endX) + 1, abs(startY - endY) + 1);
+		repaint(min(startX, endX) - 1, transformY(max(startY, endY)) - 1, abs(startX - endX) + 3, abs(startY - endY) + 3);
 	}
 }
 
@@ -456,14 +500,11 @@ void Scene::swapTemp()
 	}
 }
 
-void Scene::flipY(bool usingStartY)
+void Scene::flipY(int centerY)
 {
 	for (int i = 0; i < temp.size(); ++i)
 	{
-		if (usingStartY)
-			temp[i].y = 2 * startY - temp[i].y;
-		else
-			temp[i].y = 2 * endY - temp[i].y;
+		temp[i].y = 2 * centerY - temp[i].y;
 	}
 }
 
@@ -546,6 +587,11 @@ void Scene::mousePressEvent(QMouseEvent *e)
 	case MainWindow::FLOOD:
 		floodFill(e->x(), transformY(e->y()));
 		break;
+	case MainWindow::ELLIPSE:
+		startX = endX = e->x();
+		startY = endY = transformY(e->y());
+		setMouseTracking(true);
+		break;
 	case MainWindow::POLYGON:
 		if (drawingPolygon)
 		{
@@ -615,12 +661,15 @@ void Scene::mouseMoveEvent(QMouseEvent *e)
 	case MainWindow::POLYGON:
 		drawLine(e->x(), transformY(e->y()));
 		break;
+	case MainWindow::ELLIPSE:
+		drawRect(e->x(), transformY(e->y()));
+		break;
 	default:
 		break;
 	}
 }
 
-void Scene::mouseReleaseEvent(QMouseEvent *)
+void Scene::mouseReleaseEvent(QMouseEvent *e)
 {
 	switch (window->getTool())
 	{
@@ -631,6 +680,23 @@ void Scene::mouseReleaseEvent(QMouseEvent *)
 	case MainWindow::LINE:
 		done();
 		setMouseTracking(false);
+		break;
+	case MainWindow::ELLIPSE:
+		clearTemp();
+		drawEllipse(e->x(), transformY(e->y()));
+		done();
+		setMouseTracking(false);
+		switch (window->getPolyFillType())
+		{
+		case MainWindow::COLOR:
+			fill();
+			break;
+		case MainWindow::SHADOW:
+			fill(window->getShadowInterval());
+			break;
+		default:
+			break;
+		}
 		break;
 	case MainWindow::RECT:
 		done();
@@ -651,7 +717,6 @@ void Scene::mouseReleaseEvent(QMouseEvent *)
 		default:
 			break;
 		}
-
 		break;
 	case MainWindow::POLYGON:
 		break;

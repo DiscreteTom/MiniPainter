@@ -23,7 +23,7 @@ private:
 		int x;
 		int y;
 		QColor color;
-		Temp(int x = 0, int y = 0 ,QColor color = QColor()):x(x), y(y), color(color){}
+		Temp(int x = 0, int y = 0, QColor color = QColor()) : x(x), y(y), color(color) {}
 	};
 
 	struct Edge
@@ -47,7 +47,7 @@ private:
 	MainWindow *window;
 
 	QColor **permanent; // left bottom is (0, 0), all white by default
-	QVector<Temp> temp;					// record all temp points. left bottom point is (0, 0)
+	QVector<Temp> temp; // record all temp points. left bottom point is (0, 0)
 	QPixmap *cache;			// left top is (0, 0), to optimize drawing speed
 
 	bool clearingTemp = false;
@@ -68,6 +68,7 @@ private:
 	void floodFill(int x, int y);												// flood fill 4-connected-region of (x, y) with foreground color
 	void fill(int step = 0);														// according to edges
 	QMap<int, QVector<Node>> constructET();
+	void drawEllipse(int x, int y);
 
 	int transformY(int y) const { return HEIGHT - y - 1; } // left bottom (0, 0) <-> left top (0, 0)
 	int max(int a, int b) const { return a > b ? a : b; }
@@ -77,7 +78,7 @@ private:
 	void clearTemp(); // set temp[] to empty and erase them on canvas according to startX/Y & endX/Y
 	void drawTemp();
 	void swapTemp();										 // temp[].x <-> temp[].y
-	void flipY(bool usingStartY = true); // temp[].y = 2 * startY - temp[].y
+	void flipY(int centerY); // temp[].y = 2 * centerY - temp[].y
 	void done();												 // merge temp to permanent
 
 protected:
